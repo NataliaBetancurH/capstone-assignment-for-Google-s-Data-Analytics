@@ -1,0 +1,282 @@
+---
+title: "Case Study: How Does a Bike-Share Navigate Speedy Success?"
+output: html_notebook
+---
+
+Natalia Betancur Herrera
+2023-01
+
+**Introduction**
+
+This project is the final capstone assignment for Google's Data Analytics Professional Certification. In this program, you will learn about analyzing, collecting, transforming, and organizing data to draw conclusions, make predictions and drive informed decision-making.
+
+**About the company**
+
+
+In 2016, Cyclistic launched a successful bike-share offering. Since then, the program has grown to a fleet of 5,824 bicycles that are geotracked and locked into a network of 692 stations across Chicago. The bikes can be unlocked from one station and returned to any other station in the system anytime. 
+
+Until now, Cyclistic’s marketing strategy relied on building general awareness and appealing to broad consumer segments. One approach that helped make these things possible was the flexibility of its pricing plans: single-ride passes, full-day passes, and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual riders. Customers who purchase annual memberships are Cyclistic members.
+
+
+# Roadmap to solve the problem
+
+## Step 1: Ask
+
+**What is the context?**
+
+The marketing team must devise strategies to convert occasional users into annual members. This is why they need to better understand the behavior of their users.
+
+**what is the goal?**
+
+The objective of this work is to identify the differences between annual members and occasional riders in the use of Cyclistic bicycles to create marketing strategies aimed at converting occasional riders into annual members.
+
+**Who are the stakeholders?**
+
+Director of marketing and Cyclistic executive team
+
+## Step 2 : Prepare
+
+Once there is an understanding of the problem, one can think about how to solve this. For this step, I used Cyclistic’s historical trip data to analyze and identify trends. This is public data that you can use to explore how different customer types are using Cyclistic bikes.
+
+**Where is your data located?**
+
+The 12 databases were downloaded and stored in the google case study folder with their respective dates for each subfolder. Some files that contained errors in their names were renamed.
+
+**How are you addressing licensing, privacy, security, and accessibility?**
+
+Taking into account data privacy policies, the databases do not contain information such as the user's name, credit card number, or other information. I only used the information associated with mobility (time, day, type of membership).
+
+**How is the data organized?**
+
+The 12 databases were verified taking into account the name of the columns, the total number of records, and the type of data. The 12 files were concatenated.
+
+| Columns | Description |
+| ---------- | ---------- |
+| ride_id   | Identification number  |
+| rideable_type   | bicycle type   |
+| started_at   | Date and time of start   |
+| ended_at   | Date and time of end   |
+| start_station_name   | name of starting station   |
+| start_station_id   | start station code   |
+| end_station_name   | end station name   |
+| end_station_id   | end station code   |
+| start_lat   | start latitude   |
+| start_lng   | start longitude   |
+| end_lat   | end latitude   |
+| end_lng   | end longitude   |
+| member_casual   | membership type   |
+
+## Step 3: Process
+
+In this step, the tools for the analysis are selected and the data cleaning is performed (is the fixing or removing incorrect, corrupted, incorrectly formatted, duplicate, or incomplete data within a dataset)
+
+**What tools are you choosing and why?**
+
+The following tools were used for this project: Excel to verify the files and save the results of the analysis, R studio for the processing, cleaning and transformation of the data. finally Github to publish the results and the code.
+
+**Have you ensured your data’s integrity?**
+
+The R studio tool was used for data quality analysis, data cleaning, data transformation, and visualization. The code used is explained below.
+
+The first step is to install and verify the libraries. 
+```{r}
+# Libraries
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(readr)
+library(janitor)
+library(data.table)
+library(tidyr)
+```
+
+The second step is to load the database (it is important to check the format) and display the columns and the data structure.
+
+```{r}
+# Read data
+datos<-read.csv("Datos_concatenados2.csv")
+
+# Names
+head(datos)
+
+# Columns
+colnames(datos)
+```
+
+The third step is to check the data types, check for null values and duplicity in the columns.
+
+```{r}
+# Data structure
+str(datos)
+
+#Null 
+sum(is.na(datos))
+
+unique(datos$start_station_name)
+```
+
+The fourth step is to select the most relevant information for the analysis and delete the columns that will not be used.
+
+```{r}
+# Remove information 
+datos2 <- select (datos, -start_lng,-start_lat,-end_lng,-end_lat, -weekday)
+colnames(datos2)
+```
+
+The fifth step is to organize the formats (dates, data types, errors in names, etc). 
+
+```{r}
+# Transform 
+datos3 <- datos2 %>% mutate(start_station_id = as.character(start_station_id), end_station_id = as.character(end_station_id))
+```
+
+Once the information has been organized, new information is sought by means of mathematical calculations. An example is the duration of the trips.
+
+```{r}
+# Create new columns
+datos3$trip_duration <- (as.double(difftime(datos3$ended_at, datos3$started_at)))/60
+colnames(datos3)
+```
+
+It is important to review the data and its consistency for analysis. In this case, all trips with a duration (in minutes) less than 0 are eliminated.
+
+```{r}
+# Drop test information
+nrow(subset(datos3,trip_duration < 0))
+datos4 <- datos3[!(datos3$trip_duration < 0),]
+```
+
+
+## Step 4: Analize
+
+The next step is to analyze the information after it has been cleaned and organized, looking for the most important variables, patterns and trends that can help solve the problem.
+
+
+
+One of the goals of the project is to understand the distribution of the users (members and casuals) for this a groupby with a count is made.
+
+```{r}
+# checking count of distinct values
+datos4 %>% group_by(member_casual) %>% count(member_casual)
+```
+
+Once the distribution of the population is understood, the travel time (important variable) is studied.
+
+```{r}
+# statictical summary of duration for all trips
+summary(datos4$trip_duration)
+```
+
+For the trip duration analysis, the maximum, minimum and average of the trip_duration column are found.
+
+```{r}
+#statistical summary of trip_duration by customer_type
+datos4 %>%
+  group_by(member_casual) %>%
+  summarise(min_trip_duration = min(trip_duration),max_trip_duration = max(trip_duration),
+            median_trip_duration = median(trip_duration), mean_trip_duration = mean(trip_duration))
+
+```
+
+The number of users per day is an important factor in the analysis, so the wday function is used to extract the day of the week from the date of the trip.
+
+```{r}
+# day of the week
+datos4$weekday <- wday(datos4$ended_at)
+colnames(datos4)
+```
+
+To visualize the information, a table is created with the type of user (member or casual), the day of the week, the number of trips and the average trip duration.
+
+```{r}
+# Summary of information
+datos4 %>% 
+  group_by(member_casual, weekday) %>%  
+  summarise(number_of_rides = n(),average_duration_mins = mean(trip_duration)) %>% 
+  arrange(member_casual, desc(number_of_rides))
+```
+
+After analyzing the information, it is organized into graphs to better visualize the trends. 
+
+```{r}
+# Total trips by customer type Vs. Day of the week
+datos4 %>%  
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  labs(title ="Total trips by customer type Vs. Day of the week") +
+  geom_col(width=0.5, position = position_dodge(width=0.5)) +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+```
+
+After analyzing the data by weeks, it is observed that it should be analyzed by months, so the month of the trip date is extracted.
+
+```{r}
+datos4$month <- format(as.Date(datos4$started_at),'%b_%y')
+```
+
+Graph of total trips by users per month
+
+```{r}
+# Total trips by customer type Vs. Month
+datos4 %>%  
+  group_by(member_casual, month) %>% 
+  summarise(number_of_rides = n()) %>% 
+  arrange(member_casual, month)  %>% 
+  ggplot(aes(x = month, y = number_of_rides, fill = member_casual)) +
+  labs(title ="Total trips by customer type Vs. Month") +
+  theme(axis.text.x = element_text(angle = 30)) +
+  geom_col(width=0.5, position = position_dodge(width=0.5)) +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+```
+
+Graph of average weekly travel
+
+```{r}
+# Average trip duration by customer type Vs. Day of the week
+datos4 %>%  
+  group_by(member_casual, weekday) %>% 
+  summarise(average_trip_duration = mean(trip_duration)) %>%
+  ggplot(aes(x = weekday, y = average_trip_duration, fill = member_casual)) +
+  geom_col(width=0.5, position = position_dodge(width=0.5)) + 
+  labs(title ="Average trip duration by customer type Vs. Day of the week")
+```
+
+Graph of the average trip per month
+
+```{r}
+# Average trip duration by customer type Vs. Month
+datos4 %>%  
+  group_by(member_casual, month) %>% 
+  summarise(average_trip_duration = mean(trip_duration)) %>%
+  ggplot(aes(x = month, y = average_trip_duration, fill = member_casual)) +
+  geom_col(width=0.5, position = position_dodge(width=0.5)) + 
+  labs(title ="Average trip duration by customer type Vs. Month") +
+  theme(axis.text.x = element_text(angle = 30))
+```
+
+The latest analysis focuses on the type of bicycles preferred by users.
+
+```{r}
+# Ride type Vs. Number of trips
+datos4 %>%
+  group_by(rideable_type, member_casual) %>%
+  summarise(number_of_trips = n()) %>%  
+  ggplot(aes(x= rideable_type, y=number_of_trips, fill= member_casual))+
+  geom_bar(stat='identity') +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
+  labs(title ="Ride type Vs. Number of trips")
+```
+
+## Findings
+
+* The casual user type tends to use the bicycle most frequently on days 1 and 7 of the week. While members are on days 3, 4, and 5.
+
+* During the vacation season (June, July and August) and at the end of the year (November, December), the use of bicycles increases significantly.
+
+* The travel time of casual users is longer than that of members, both in the analysis by days of the week and by months of the year.
+
+* A marketing strategy could be implemented that focuses on the use of docked bicycles, which are only used by casual users.
+
